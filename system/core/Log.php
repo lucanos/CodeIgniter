@@ -102,7 +102,17 @@ class CI_Log {
 	 *
 	 * @var array
 	 */
-	protected $_levels = array('ERROR' => 1, 'DEBUG' => 2, 'INFO' => 3, 'ALL' => 4);
+	protected $_levels = array(
+		'NONE'      => 0,
+		'EMERGENCY' => 1,
+		'ALERT'     => 2,
+		'CRITICAL'  => 3,
+		'ERROR'     => 4,
+		'WARNING'   => 5,
+		'NOTICE'    => 6,
+		'INFO'      => 7,
+		'DEBUG'     => 8
+	);
 
 	/**
 	 * mbstring.func_overload flag
@@ -165,11 +175,12 @@ class CI_Log {
 	 *
 	 * Generally this function will be called using the global log_message() function
 	 *
-	 * @param	string	$level 	The error level: 'error', 'debug' or 'info'
+	 * @param	string	$level 	The error level (See $_levels)
 	 * @param	string	$msg 	The error message
+	 * @param	string	$additional_variable 	An optional variable which will be appended to the log message
 	 * @return	bool
 	 */
-	public function write_log($level, $msg)
+	public function write_log($level, $msg, array $additional_variable = array())
 	{
 		if ($this->_enabled === FALSE)
 		{
@@ -217,6 +228,11 @@ class CI_Log {
 			$date = date($this->_date_fmt);
 		}
 
+		if (! empty($additional_variable))
+		{
+			$msg .= "\n".self::contextToString($additional_variable);
+		}
+		
 		$message .= $this->_format_line($level, $date, $msg);
 
 		for ($written = 0, $length = self::strlen($message); $written < $length; $written += $result)
@@ -292,4 +308,32 @@ class CI_Log {
 			? substr($str, $start, $length)
 			: substr($str, $start);
 	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Converts provided value into a string for logging
+	 *
+	 * @param	array	$variable
+	 * @return	string
+	 */
+	protected function contextToString($variable)
+	{
+		$export = '';
+		foreach ($variable as $key => $value) {
+			$export .= "{$key}: ";
+			$export .= preg_replace(array(
+				'/=>\s+([a-zA-Z])/im',
+				'/array\(\s+\)/im',
+				'/^  |\G  /m'
+			), array(
+				'=> $1',
+				'array()',
+				'    '
+			), str_replace('array (', 'array(', var_export($value, true)));
+			$export .= PHP_EOL;
+		}
+		return "\t".str_replace(array('\\\\', '\\\'', "\n"), array('\\', '\'', "\n\t"), rtrim($export));
+    }
+
 }
